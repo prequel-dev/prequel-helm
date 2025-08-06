@@ -88,12 +88,12 @@ jobs:
           ssh-add github_helm.sshkey
 
           pushd ./helm
-          ../../prequel-release/helm.sh ../prequel-helm/
+          ../ci/helm.sh ../prequel-helm/
           git status
           git add index.yaml
           git add *.tgz
           git config --global user.email "prequel-release@prequel.dev"
           git config --global user.name "Prequel Release"
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
-          GIT_SSH_COMMAND="ssh -v" GIT_TRACE=1 GIT_TRACE_PACKET=1 GIT_TRACE_PACK_ACCESS=1 git push origin main || true
+          git push origin main || true
           popd
