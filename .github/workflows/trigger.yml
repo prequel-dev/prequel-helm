@@ -46,7 +46,7 @@ jobs:
           ssh-add github.sshkey
 
           echo "Patch prequel-server"
-          ./ci/patch.sh ./collector/values.yaml ./prequel-helm/publish_output.yaml
+          ./ci/patch.sh ./collector/values.yaml ./prequel-release/publish_output.yaml
 
       - name: Commit and Tag
         id: commit_and_tag
@@ -97,6 +97,11 @@ jobs:
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
           popd
+
+          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY }}" > github.sshkey
+          chmod 400 github.sshkey
+          eval $(ssh-agent -s)
+          ssh-add github.sshkey
 
           pushd ./prequel-helm
           git add ./collector
