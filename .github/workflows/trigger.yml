@@ -54,7 +54,7 @@ jobs:
           git config --global user.email "prequel-release@prequel.dev"
           git config --global user.name "Prequel Release"
           git add ./collector
-          git commit -m "prequel-release automatic update" || true
+          git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
 
           git fetch --tags origin
@@ -97,13 +97,3 @@ jobs:
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
           popd
-
-          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY }}" > github.sshkey
-          chmod 400 github.sshkey
-          eval $(ssh-agent -s)
-          ssh-add github.sshkey
-
-          pushd ./prequel-helm
-          git add ./collector
-          git commit -m "prequel-helm update collector chart ${{ steps.commit_and_tag.outputs.next_tag }}" || true
-          git push origin main || true
