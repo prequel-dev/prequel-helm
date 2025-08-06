@@ -82,10 +82,10 @@ jobs:
 
       - name: Publish new collector chart
         run: |
-          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY_HELM }}" > github.sshkey
-          chmod 400 github.sshkey
+          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY_HELM }}" > github_helm.sshkey
+          chmod 400 github_helm.sshkey
           eval $(ssh-agent -s)
-          ssh-add github.sshkey
+          ssh-add github_helm.sshkey
 
           pushd ./helm
           ../prequel-helm/helm.sh ../prequel-helm/
@@ -95,5 +95,5 @@ jobs:
           git config --global user.email "prequel-release@prequel.dev"
           git config --global user.name "Prequel Release"
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
-          git push origin main || true
+          GIT_SSH_COMMAND="ssh -v" GIT_TRACE=1 GIT_TRACE_PACKET=1 GIT_TRACE_PACK_ACCESS=1 git push origin main || true
           popd
