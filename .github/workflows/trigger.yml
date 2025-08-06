@@ -1,4 +1,4 @@
-name: Prequel Client Package Release
+name: Prequel Client Helm Package Release
 
 on:
   workflow_dispatch:
@@ -19,7 +19,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}
+          # This deploy key only has access to the prequel-helm repo
+          ssh-key: ${{ secrets.PREQUEL_HELM_DEPLOY_KEY }}
 
       - name: Grab prequel-release server images publish artifact
         uses: actions/download-artifact@v4
