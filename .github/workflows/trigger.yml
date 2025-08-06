@@ -26,7 +26,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
             name: prequel-release
-            github-token: ${{ secrets.PREQUEL_GH_TOKEN }}
+            github-token: ${{ secrets.PREQUEL_HELM_PREQUEL_RELEASE_ACCESS_GH_TOKEN }}
             repository: prequel-dev/prequel-release
             run-id: ${{ github.event.client_payload.runid }}
             path: ./prequel-release
@@ -40,7 +40,7 @@ jobs:
 
       - name: Patch Client Helm Chart
         run: |
-          echo "${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}" > github.sshkey
+          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY }}" > github.sshkey
           chmod 400 github.sshkey
           eval $(ssh-agent -s)
           ssh-add github.sshkey
@@ -73,12 +73,17 @@ jobs:
       - name: Checkout public helm chart
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}
+          ssh-key: ${{ secrets.PREQUEL_HELM_DEPLOY_KEY_HELM }}
           repository: prequel-dev/helm
           path: helm
 
       - name: Publish new collector chart
         run: |
+          echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY_HELM }}" > github.sshkey
+          chmod 400 github.sshkey
+          eval $(ssh-agent -s)
+          ssh-add github.sshkey
+
           pushd ./helm
           ../prequel-helm/helm.sh ../prequel-helm/
           git status
