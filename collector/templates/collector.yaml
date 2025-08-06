@@ -1,0 +1,274 @@
+{{ if .Values.collector.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.collector.fullnameOverride }}
+  labels:
+    {{- include "collector.labels" . | nindent 4 }}
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      {{- include "collector.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.collector.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "collector.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "collector.serviceAccountName" . }}
+      securityContext:
+        fsGroup: {{ .Values.collector.securityContext.fsGroup }}
+      volumes:
+        - name: nats-tls
+          secret:
+            secretName: nats-tls
+        - name: tls-ca
+          secret:
+            secretName: nats-ca
+        - name: cache-volume
+          persistentVolumeClaim:
+            claimName: policy-cache-pv-claim
+        - name: k8s-spool-volume
+          persistentVolumeClaim:
+            claimName: k8s-spool-pv-claim
+        - name: spool-volume
+          persistentVolumeClaim:
+            claimName: spool-pv-claim
+        - name: shared-data
+          emptyDir: {}
+      initContainers:
+        - name: "machineid"
+          command:
+          - '/app/prequel-machineid'
+          - '/data/machineid.txt'
+          image: "{{ .Values.repository }}/{{ .Values.machineid.image.repoName }}:{{ .Values.machineid.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          env:
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          # See https://github.com/kubernetes/examples/issues/260
+          - name: "FIX_OWNERSHIP_UID"
+            value: "{{ .Values.collector.securityContext.runAsUser }}"
+          - name: "FIX_OWNERSHIP_GID"
+            value: "{{ .Values.collector.securityContext.runAsGroup }}"
+          - name: "FIX_OWNERSHIP_PATHS"
+            value: "/etc/prequel/spool,/etc/prequel/spool_legacy/k8s,/etc/prequel-policy"
+          volumeMounts:
+          - name: shared-data
+            mountPath: /data
+          - name: spool-volume
+            mountPath: /etc/prequel/spool
+          - name: k8s-spool-volume
+            mountPath: /etc/prequel/spool_legacy/k8s
+          - name: cache-volume
+            mountPath: /etc/prequel-policy
+        - name: "cgroupid"
+          command:
+          - /bin/sh
+          - '-c'
+          - 'cat /proc/self/cgroup > /data/cgroupid.txt'
+          image: "busybox:latest"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: shared-data
+            mountPath: /data
+      containers:
+        - name: {{ .Chart.Name }}
+          command:
+          - /app/prequel-collector
+          securityContext:
+            runAsUser: {{ .Values.collector.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.collector.securityContext.runAsGroup }}
+          image: "{{ .Values.repository }}/{{ .Values.collector.image.repoName }}:{{ .Values.collector.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          env:
+          - name: API_GATEWAY
+            value: "{{ .Values.url }}"
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: PREQUEL_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.provision.tokenName }}"
+                key: "{{ .Values.provision.tokenKey }}"
+          - name: K8S_SPOOL_SIZE
+            value: {{ .Values.collector.k8s.eventSpoolSize }}
+          volumeMounts:
+          - mountPath: /etc/nats-certs/nats
+            name: nats-tls
+            readOnly: true
+          - mountPath: /etc/nats-ca-cert
+            name: tls-ca
+            readOnly: true
+          - mountPath: /etc/prequel-policy
+            name: cache-volume
+          - mountPath: /etc/prequel/spool_legacy/k8s
+            name: k8s-spool-volume
+          - mountPath: /etc/prequel/spool
+            name: spool-volume
+          - name: shared-data
+            mountPath: /data
+      {{- with .Values.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} {{- with .Values.collector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.collector.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  # RollingUpdate can trigger multi-attach failures for pvcs when the new pod is scheduled on a different node
+  strategy:
+    type: Recreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: policy-cache-pv-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  {{- if .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: 10Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: k8s-spool-pv-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  {{- if .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.collector.k8s.eventSpoolSize }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: spool-pv-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  {{- if .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.collector.eventSpool.size }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "collector.serviceAccountName" . }}
+  labels:
+    {{- include "collector.labels" . | nindent 4 }}
+  {{- with .Values.collector.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "collector.fullname" . }}
+  labels:
+    {{- include "collector.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "collector.selectorLabels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    {{- include "collector.labels" . | nindent 4 }}
+  name: {{ include "collector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "collector.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "collector.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "collector.labels" . | nindent 4 }}
+  name: {{ include "collector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups:
+  - apps 
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - batch
+  resources:
+  - jobs
+  - cronjobs
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  - pods
+  - pods/log
+  - nodes
+  - namespaces
+  - services
+  - secrets
+  - endpoints
+  - configmaps
+  verbs:
+  - create
+  - update
+  - list
+  - watch
+  - get
+---
+{{ end }}

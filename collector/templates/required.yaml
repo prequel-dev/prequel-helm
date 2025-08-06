@@ -1,0 +1,3 @@
+{{- if not .Values.externalSecrets }}
+{{- $_ := required "token must be defined" .Values.token}}
+{{- end }}

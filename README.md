@@ -1,1 +1,1 @@
-# prequel-helm
+# Prequel Collector Helm Chart

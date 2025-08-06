@@ -1,0 +1,14 @@
+
+Thank you for installing Prequel!
+
+* Your release is named "{{ .Release.Name }}"
+{{- if .Values.clusterName }}
+* Your cluster name is "{{ .Values.clusterName }}"
+{{- end }}
+* Log in with your OIDC credentials (email address) at https://{{ .Values.appUrl }}
+
+To check the status of your deployment, run:
+
+  kubectl -n {{ .Release.Namespace }} get all -l app.kubernetes.io/instance={{ .Release.Name }}
+
+The prequel-provision-install job will take a moment to finish setting up your environment.

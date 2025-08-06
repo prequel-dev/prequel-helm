@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: prequel-provision
+  annotations:
+    # ArgoCD annotations
+    # Create provision resources before installing the client resources
+    argocd.argoproj.io/hook: PreSync
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-10"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+    # Helm annotations
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prequel-provision
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # ArgoCD annotations
+    # Create provision resources before installing the client resources
+    argocd.argoproj.io/hook: PreSync
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-10"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+    # Helm annotations
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - update
+  - list
+  - get
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prequel-provision
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # ---
+    # ArgoCD annotations
+    # Create provision resources before installing the client resources
+    argocd.argoproj.io/hook: PreSync
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-10"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+    # Helm annotations
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prequel-provision
+subjects:
+- kind: ServiceAccount
+  name: prequel-provision
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prequel-install
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # Run job after provision resources created.
+    # Allow the job manager to delete the job resource after ttl,
+    # which gives us an opportunity to see the job logs.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    # Helm annotations
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-weight": "-5"
+spec:
+  ttlSecondsAfterFinished: 120 
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: prequel-provision
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations:
+        {{- toYaml .Values.provision.tolerations | nindent 8 }}
+      containers:
+      - name: prequel-provision
+        image:  "{{ .Values.repository }}/{{ .Values.provision.image.repoName }}:{{ .Values.provision.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.provision.image.pullPolicy }}
+        command:
+          - /app/prequel-provision
+        args:
+          - "install"
+        env:
+        - name: API_GATEWAY
+          value: "{{ .Values.url }}"
+        - name: CLUSTER_NAME
+          value: "{{ .Values.clusterName }}"
+        - name: PREQUEL_TOKEN
+          value: "{{ .Values.token }}"
+        - name: PREQUEL_TOKEN_NAME
+          value: "{{ .Values.provision.tokenName }}"
+        - name: PREQUEL_TOKEN_KEY
+          value: "{{ .Values.provision.tokenKey }}"
+        - name: PREQUEL_DOCKER_HUB_ENABLED
+          value: "{{ .Values.dockerHubEnabled }}"
+      {{- with .Values.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} {{- with .Values.collector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

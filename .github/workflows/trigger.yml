@@ -1,0 +1,71 @@
+name: Prequel Client Package Release
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [trigger-workflow]
+
+env:
+  AWS_REGION : us-east-1
+
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read    # This is required for actions/checkout
+
+jobs:
+  release:
+    runs-on: [self-hosted, release-runner]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}
+
+      - name: Grab prequel-release server images publish artifact
+        uses: actions/download-artifact@v4
+        with:
+            name: prequel-release
+            github-token: ${{ secrets.PREQUEL_GH_TOKEN }}
+            repository: prequel-dev/prequel-release
+            run-id: ${{ github.event.client_payload.runid }}
+            path: ./prequel-release
+
+      - name: Configure credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: arn:aws:iam::011528304142:role/github-role
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Patch Client Helm Chart
+        run: |
+          echo "${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}" > github.sshkey
+          chmod 400 github.sshkey
+          eval $(ssh-agent -s)
+          ssh-add github.sshkey
+
+          echo "Patch prequel-server"
+          ./ci/patch.sh ./collector/values.yaml ./prequel-helm/publish_output.yaml
+
+      - name: Commit and Tag
+        id: commit_and_tag
+        run: |
+          git config --global user.email "prequel-release@prequel.dev"
+          git config --global user.name "Prequel Release"
+          git add ./server
+          git add ./client
+          git commit -m "prequel-release automatic update prequel.yaml" || true
+          git push origin main || true
+
+          git fetch --tags origin
+          version=${latest_tag#v}
+          IFS='.' read -r major minor patch <<< "$version"
+          patch=$((patch + 1))
+          next_tag="v${major}.${minor}.${patch}"
+
+          echo "Bumping version: ${latest_tag:-none} → $next_tag"
+
+          git tag -a "$next_tag" -m "Release $next_tag"
+          git push origin "$next_tag"
+
+          echo "next_tag=$next_tag" >> "$GITHUB_OUTPUT"

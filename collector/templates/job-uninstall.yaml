@@ -1,0 +1,168 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: prequel-uninstall
+  annotations:
+    # ---
+    # Helm annotations
+    # Delay creation of uninstall service account until hook is run
+    "helm.sh/hook": pre-delete
+    # Resources must be created *before* the job is run or the job cannot execute
+    "helm.sh/hook-weight": "-5"
+    # Remove resource after job run whether or not it succeeded
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    # ---
+    # ArgoCD annotations
+    # PreDelete does not exists for Argo, must run post delete.
+    argocd.argoproj.io/hook: PostDelete
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-5"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prequel-uninstall
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # ---
+    # Helm annotations
+    # Delay creation of uninstall service account until hook is run
+    "helm.sh/hook": pre-delete
+    # Resources must be created *before* the job is run or the job cannot execute
+    "helm.sh/hook-weight": "-5"
+    # Remove resource after job run whether or not it succeeded
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    # ---
+    # ArgoCD annotations
+    # PreDelete does not exists for Argo, must run post delete.
+    argocd.argoproj.io/hook: PostDelete
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-5"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - list
+  - get
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prequel-uninstall
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # ---
+    # Helm annotations
+    # Delay creation of uninstall service account until hook is run
+    "helm.sh/hook": pre-delete
+    # Resources must be created *before* the job is run or the job cannot execute
+    "helm.sh/hook-weight": "-5"
+    # Remove resource irregardless
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    # ---
+    # ArgoCD annotations
+    # PreDelete does not exists for Argo, must run post delete.
+    argocd.argoproj.io/hook: PostDelete
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-5"
+    # Remove resource irregardless
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prequel-uninstall
+subjects:
+- kind: ServiceAccount
+  name: prequel-uninstall
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: prequel-uninstall
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    # Defer creation of job until hook is run.
+    # Uninstall job should run before resources are deleted to allow NATS comms.
+    "helm.sh/hook": pre-delete
+    # Unfortunatley, Helm does not support pre-delete hooks.
+    # That means that the NATS callback to the backend will fail, but at least secrets will be removed.
+    argocd.argoproj.io/hook: PostDelete
+    # Allow the job manager to delete the job resource after ttl,
+    # which gives us an opportunity to see the job logs.
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: prequel-uninstall
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: nats-tls
+          secret:
+            secretName: nats-tls
+            optional: true
+        - name: tls-ca
+          secret:
+            secretName: nats-ca
+            optional: true
+      tolerations:
+        {{- toYaml .Values.provision.tolerations | nindent 8 }}
+      containers:
+      - name: prequel-provision
+        image:  "{{ .Values.repository }}/{{ .Values.provision.image.repoName }}:{{ .Values.provision.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.provision.image.pullPolicy }}
+        command:
+          - /app/prequel-provision
+        env:
+        - name: API_GATEWAY
+          value: "{{ .Values.url }}"
+        - name: PREQUEL_TOKEN_NAME
+          value: "{{ .Values.provision.tokenName }}"
+        - name: PREQUEL_TOKEN_KEY
+          value: "{{ .Values.provision.tokenKey }}"
+        - name: EXTERNAL_SECRETS
+          value: "{{ .Values.externalSecrets }}"
+        - name: PREQUEL_DOCKER_HUB_ENABLED
+          value: "{{ .Values.dockerHubEnabled }}"
+        args:
+          - "uninstall"
+        volumeMounts:
+          - mountPath: /etc/nats-certs/nats
+            name: nats-tls
+            readOnly: true
+          - mountPath: /etc/nats-ca-cert
+            name: tls-ca
+            readOnly: true
+      {{- with .Values.collector.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }} {{- with .Values.collector.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
