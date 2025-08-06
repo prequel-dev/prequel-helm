@@ -52,9 +52,8 @@ jobs:
         run: |
           git config --global user.email "prequel-release@prequel.dev"
           git config --global user.name "Prequel Release"
-          git add ./server
-          git add ./client
-          git commit -m "prequel-release automatic update prequel.yaml" || true
+          git add ./collector
+          git commit -m "prequel-release automatic update" || true
           git push origin main || true
 
           git fetch --tags origin
@@ -69,3 +68,28 @@ jobs:
           git push origin "$next_tag"
 
           echo "next_tag=$next_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout public helm chart
+        uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.PREQUEL_GIT_ACTIONS_SSH_KEY }}
+          repository: prequel-dev/helm
+          path: helm
+
+      - name: Publish new collector chart
+        run: |
+          pushd ./helm
+          ../prequel-helm/helm.sh ../prequel-helm/
+          git status
+          git add index.yaml
+          git add *.tgz
+          git config --global user.email "prequel-release@prequel.dev"
+          git config --global user.name "Prequel Release"
+          git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
+          git push origin main || true
+          popd
+
+          pushd ./prequel-helm
+          git add ./collector
+          git commit -m "prequel-helm update collector chart ${{ steps.commit_and_tag.outputs.next_tag }}" || true
+          git push origin main || true
