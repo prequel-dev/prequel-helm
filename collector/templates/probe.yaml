@@ -16,10 +16,6 @@ spec:
       labels:
         {{- include "probes.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       initContainers:
         - name: "machineid"
           command:
@@ -36,7 +32,7 @@ spec:
           - name: shared-data
             mountPath: /data
       containers:
-      - args: []
+      - args: ["/app/prequel-probes"]
         image: "{{ .Values.repository }}/{{ .Values.probes.image.repoName }}:{{ .Values.probes.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.probes.image.pullPolicy }}
         name: {{ .Values.probes.fullnameOverride }}
