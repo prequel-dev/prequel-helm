@@ -80,7 +80,7 @@ jobs:
           repository: prequel-dev/helm
           path: helm
 
-      - name: Publish new collector chart
+      - name: Tag and Publish new collector chart
         run: |
           echo "${{ secrets.PREQUEL_HELM_DEPLOY_KEY_HELM }}" > github_helm.sshkey
           chmod 400 github_helm.sshkey
@@ -96,4 +96,8 @@ jobs:
           git config --global user.name "Prequel Release"
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
+
+          git tag -a "v${{ steps.commit_and_tag.outputs.next_tag }}" -m "Release ${{ steps.commit_and_tag.outputs.next_tag }}"
+          git push origin "$next_tag"
+
           popd
