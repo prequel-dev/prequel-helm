@@ -32,7 +32,7 @@ provision:
   # The Prequel provision image. All containers are hosted in the same repository.
   image:
     repoName: "prequel"
-    tag: "latest"
+    tag: "0.13.16"
     pullPolicy: IfNotPresent
   # The tolerations to apply to the Prequel provision job.
   tolerations: []
@@ -49,7 +49,7 @@ provision:
 machineid:
   image:
     repoName: "prequel"
-    tag: "latest"
+    tag: "0.13.16"
     pullPolicy: IfNotPresent
 ########################################################
 # Collector install job options
@@ -70,7 +70,7 @@ collector:
   # The Prequel collector image.
   image:
     repoName: "prequel"
-    tag: "latest"
+    tag: "0.13.16"
     pullPolicy: IfNotPresent
   # The fullname override for the Prequel collector service account.
   fullnameOverride: "prequel-collector"
@@ -117,7 +117,7 @@ probes:
   # The Prequel probes image.
   image:
     repoName: "prequel"
-    tag: "latest"
+    tag: "0.13.16"
     pullPolicy: IfNotPresent
   # The fullname override for the Prequel probes service account.
   fullnameOverride: "prequel-probes"
@@ -168,7 +168,7 @@ nats:
     image:
       fullImageName: prequeldev/prequel:latest
       pullPolicy: Always
-    merge: 
+    merge:
       args:
         - "/usr/local/bin/nats-server-config-reloader"
         - -pid
@@ -220,7 +220,7 @@ nats:
       # should be ~90% of memory limit
       GOMEMLIMIT: 920MiB
     merge:
-      args: 
+      args:
         - "/usr/local/bin/nats-server"
         - "--config"
         - "/etc/nats-config/nats.conf"
