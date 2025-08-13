@@ -3,13 +3,13 @@
 set -x
 
 CHARTPATH=$1
-
+VERSION_FILE=$2
 pushd $CHARTPATH
 
-yq -i '.version |= (split(".") | .[-1] |= ((. tag = "!!int") + 1) | join("."))' ./collector/Chart.yaml
-yq -i '.appVersion |= (split(".") | .[-1] |= ((. tag = "!!int") + 1) | join("."))' ./collector/Chart.yaml
+NEW_VERSION=$(cat $VERSION_FILE)
 
-NEW_VERSION=$(yq '.version' ./collector/Chart.yaml)
+yq -i '.version = "'$NEW_VERSION'"' ./collector/Chart.yaml
+yq -i '.appVersion = "'$NEW_VERSION'"' ./collector/Chart.yaml
 
 helm package ./collector
 
