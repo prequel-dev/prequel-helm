@@ -46,7 +46,7 @@ jobs:
           ssh-add github.sshkey
 
           echo "Patch prequel-server"
-          ./ci/patch.sh ./collector/values.yaml ./prequel-release/publish_output.yaml
+          ./ci/patch.sh ./collector/values.yaml ./prequel-release/VERSION
 
       - name: Commit and Tag
         id: commit_and_tag
