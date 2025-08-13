@@ -97,7 +97,7 @@ jobs:
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
 
-          git tag -a "v${{ steps.commit_and_tag.outputs.next_tag }}" -m "Release ${{ steps.commit_and_tag.outputs.next_tag }}"
-          git push origin "$next_tag"
+          git tag -a "${{ steps.commit_and_tag.outputs.next_tag }}" -m "Release ${{ steps.commit_and_tag.outputs.next_tag }}"
+          git push origin "${{ steps.commit_and_tag.outputs.next_tag }}"
 
           popd
