@@ -81,8 +81,6 @@ spec:
           value: "{{ .Values.provision.tokenName }}"
         - name: PREQUEL_TOKEN_KEY
           value: "{{ .Values.provision.tokenKey }}"
-        - name: PREQUEL_DOCKER_HUB_ENABLED
-          value: "{{ .Values.dockerHubEnabled }}"
       {{- with .Values.collector.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
