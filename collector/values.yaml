@@ -32,7 +32,7 @@ provision:
   # The Prequel provision image. All containers are hosted in the same repository.
   image:
     repoName: "prequel"
-    tag: "0.13.26"
+    tag: "0.13.27"
     pullPolicy: IfNotPresent
   # The tolerations to apply to the Prequel provision job.
   tolerations: []
@@ -49,7 +49,7 @@ provision:
 machineid:
   image:
     repoName: "prequel"
-    tag: "0.13.26"
+    tag: "0.13.27"
     pullPolicy: IfNotPresent
 ########################################################
 # Collector install job options
@@ -70,7 +70,7 @@ collector:
   # The Prequel collector image.
   image:
     repoName: "prequel"
-    tag: "0.13.26"
+    tag: "0.13.27"
     pullPolicy: IfNotPresent
   # The fullname override for the Prequel collector service account.
   fullnameOverride: "prequel-collector"
@@ -117,7 +117,7 @@ probes:
   # The Prequel probes image.
   image:
     repoName: "prequel"
-    tag: "0.13.26"
+    tag: "0.13.27"
     pullPolicy: IfNotPresent
   # The fullname override for the Prequel probes service account.
   fullnameOverride: "prequel-probes"
@@ -166,7 +166,7 @@ nats:
   reloader:
     enabled: true
     image:
-      fullImageName: prequeldev/prequel:0.13.26
+      fullImageName: prequeldev/prequel:0.13.27
       pullPolicy: Always
     merge:
       args:
@@ -214,7 +214,7 @@ nats:
               handshake_first: true
   container:
     image:
-      fullImageName: prequeldev/prequel:0.13.26
+      fullImageName: prequeldev/prequel:0.13.27
     env:
       # different from k8s units, suffix must be B, KiB, MiB, GiB, or TiB
       # should be ~90% of memory limit
