@@ -34,7 +34,7 @@ jobs:
       - name: Configure credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
         with:
-          role-to-assume: arn:aws:iam::011528304142:role/github-role
+          role-to-assume: ${{ secrets.PROD_ROLE }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
@@ -48,11 +48,17 @@ jobs:
           echo "Patch prequel-server"
           ./ci/patch.sh ./collector/values.yaml ./prequel-release/VERSION
 
-      - name: Commit and Tag
+      - name: Bump, Commit and Tag
         id: commit_and_tag
         run: |
           git config --global user.email "prequel-release@prequel.dev"
           git config --global user.name "Prequel Release"
+
+          NEW_VERSION=$(cat ./prequel-release/VERSION)
+
+          yq -i '.version = "'$NEW_VERSION'"' ./collector/Chart.yaml
+          yq -i '.appVersion = "'$NEW_VERSION'"' ./collector/Chart.yaml
+
           git add ./collector
           git commit -m "new release ${{ steps.commit_and_tag.outputs.next_tag }}" || true
           git push origin main || true
@@ -101,3 +107,35 @@ jobs:
           git push origin "${{ steps.commit_and_tag.outputs.next_tag }}"
 
           popd
+
+      - name: Configure dev credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ secrets.DEV_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Configure Kubernetes
+        uses: silverlyra/setup-aws-eks@v0.1
+        with:
+          cluster: ${{ secrets.DEV_CLUSTER_NAME }}
+
+      - name: Deploy release to production
+        run: |
+          helm -n prequel upgrade prequel ./collector
+
+      - name: Configure prod credentials
+        uses: aws-actions/configure-aws-credentials@v4.0.2
+        with:
+          role-to-assume: ${{ secrets.PROD_ROLE }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: us-east-1
+
+      - name: Configure prod Kubernetes
+        uses: silverlyra/setup-aws-eks@v0.1
+        with:
+          cluster: ${{ secrets.PROD_CLUSTER_NAME }}
+
+      - name: Deploy release to production
+        run: |
+          helm -n prequel upgrade prequel ./collector

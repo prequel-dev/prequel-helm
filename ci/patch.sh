@@ -17,6 +17,7 @@ function do_client() {
     "collector:prequel-collector"
     "probes:prequel-probes")
 
+  ## Prequel images
   for image in "${CLIENT_IMAGES[@]}"; do
 
     IFS=":" read -r name repo <<< "$image"
@@ -30,6 +31,25 @@ function do_client() {
     yq -i ".$name.image.tag = \"$(cat $VERSION_FILE)\"" $VALUES_YAML
 
   done
+
+  ## Nats reloader
+  echo Current nats reloader tag:
+  cat $VALUES_YAML | yq ".nats.reloader.image.fullImageName"
+
+  echo New nats reloader tag:
+  echo $(cat $VERSION_FILE)
+
+  yq -i ".nats.reloader.image.fullImageName = \"prequeldev/prequel:$(cat $VERSION_FILE)\"" $VALUES_YAML
+
+  ## Nats server
+  echo Current nats server tag:
+  cat $VALUES_YAML | yq ".nats.container.image.fullImageName"
+
+  echo New nats server tag:
+  echo $(cat $VERSION_FILE)
+
+  yq -i ".nats.container.image.fullImageName = \"prequeldev/prequel:$(cat $VERSION_FILE)\"" $VALUES_YAML
+
 }
 
 do_client
