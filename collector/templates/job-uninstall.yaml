@@ -3,6 +3,23 @@ kind: ServiceAccount
 metadata:
   namespace: {{ .Release.Namespace }}
   name: prequel-uninstall
+annotations:
+    # ---
+    # Helm annotations
+    # Delay creation of uninstall service account until hook is run
+    "helm.sh/hook": pre-delete
+    # Resources must be created *before* the job is run or the job cannot execute
+    "helm.sh/hook-weight": "-5"
+    # Remove resource after job run whether or not it succeeded
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    # ---
+    # ArgoCD annotations
+    # PreDelete does not exists for Argo, must run post delete.
+    argocd.argoproj.io/hook: PostDelete
+    # Resources must be created *before* the job is run or the job cannot execute
+    argocd.argoproj.io/sync-wave: "-5"
+    # Remove resource after job run whether or not it succeeded
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
