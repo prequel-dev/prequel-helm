@@ -2,8 +2,8 @@ apiVersion: v2
 name: prequel-collector
 description: A Helm chart for Kubernetes
 type: application
-version: "0.13.28"
-appVersion: "0.13.28"
+version: "0.13.29"
+appVersion: "0.13.29"
 dependencies:
   - name: nats
     version: 1.3.10
