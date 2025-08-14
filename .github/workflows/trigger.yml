@@ -120,9 +120,9 @@ jobs:
         with:
           cluster: ${{ secrets.DEV_CLUSTER_NAME }}
 
-      - name: Deploy release to production
+      - name: Deploy release to dev
         run: |
-          helm -n prequel upgrade prequel ./collector
+          helm -n prequel upgrade prequel-latest-dev ./collector
 
       - name: Configure prod credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
