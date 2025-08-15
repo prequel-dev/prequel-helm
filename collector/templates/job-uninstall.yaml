@@ -3,7 +3,7 @@ kind: ServiceAccount
 metadata:
   namespace: {{ .Release.Namespace }}
   name: prequel-uninstall
-annotations:
+  annotations:
     # ---
     # Helm annotations
     # Delay creation of uninstall service account until hook is run
