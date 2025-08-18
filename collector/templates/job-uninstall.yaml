@@ -3,6 +3,10 @@ kind: ServiceAccount
 metadata:
   namespace: {{ .Release.Namespace }}
   name: prequel-uninstall
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
     # ---
     # Helm annotations
@@ -11,7 +15,7 @@ metadata:
     # Resources must be created *before* the job is run or the job cannot execute
     "helm.sh/hook-weight": "-5"
     # Remove resource after job run whether or not it succeeded
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,after-hook-creation
     # ---
     # ArgoCD annotations
     # PreDelete does not exists for Argo, must run post delete.
