@@ -3,10 +3,6 @@ kind: ServiceAccount
 metadata:
   namespace: {{ .Release.Namespace }}
   name: prequel-provision
-  labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
-    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
     # ArgoCD annotations
     # Create provision resources before installing the client resources
@@ -15,11 +11,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "-10"
     # Remove resource after job run whether or not it succeeded
     argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
-    # Helm annotations
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "-10"
-    # Ensure proper cleanup and recreation for upgrades
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,after-hook-creation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -27,8 +18,6 @@ metadata:
   name: prequel-provision
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
     # ArgoCD annotations
@@ -38,10 +27,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "-10"
     # Remove resource after job run whether or not it succeeded
     argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
-    # Helm annotations
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "-10"
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,after-hook-creation
 rules:
 - apiGroups:
   - ""
@@ -60,8 +45,6 @@ metadata:
   name: prequel-provision
   namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-    app.kubernetes.io/instance: {{ .Release.Name | quote }}
     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
     # ---
@@ -72,10 +55,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "-10"
     # Remove resource after job run whether or not it succeeded
     argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
-    # Helm annotations
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "-10"
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,after-hook-creation
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -101,10 +80,6 @@ metadata:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-5"
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
-    # Helm annotations
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
-    "helm.sh/hook-weight": "-5"
 spec:
   ttlSecondsAfterFinished: 120 
   template:
@@ -117,6 +92,10 @@ spec:
     spec:
       restartPolicy: OnFailure
       serviceAccountName: prequel-provision
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       tolerations:
         {{- toYaml .Values.provision.tolerations | nindent 8 }}
       containers:
@@ -138,8 +117,6 @@ spec:
           value: "{{ .Values.provision.tokenName }}"
         - name: PREQUEL_TOKEN_KEY
           value: "{{ .Values.provision.tokenKey }}"
-        - name: PREQUEL_DOCKER_HUB_ENABLED
-          value: "{{ .Values.dockerHubEnabled }}"
       {{- with .Values.collector.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
