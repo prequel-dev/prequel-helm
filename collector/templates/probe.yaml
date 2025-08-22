@@ -140,45 +140,54 @@ rules:
   - list
   - watch
 ---
-{{- if and (not .Values.externalSecrets) (not .Values.dockerHubEnabled) }}
-apiVersion: v1
-kind: Secret
-metadata:
-  name: registrycred
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    # ArgoCD requires jobs be annotated with a PreSync
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/sync-wave: "-5"
-type: kubernetes.io/dockerconfigjson
-data:
-  .dockerconfigjson: {{ printf "{ \"auths\": { \"%s\": { \"auth\": \"%s\" } } }" .Values.repository ( printf "prequel:%s" .Values.token | b64enc) | b64enc }}
-{{- else }}
-# No Secret is created; ensure registrycred is created by an external secret manager ahead of time
-{{- end }}
----
 {{- if .Values.scc }}
+apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
-apiVersion:  security.openshift.io/v1
 metadata:
- name: prequel-scc
+  name: prequel-scc
+  labels:
+    app.kubernetes.io/managed-by: Helm
+priority: 100
 allowPrivilegedContainer: true
 allowHostPID: true
-allowHostIPC: false
-allowHostPorts: false
-readOnlyRootFilesystem: false
-allowedCapabilities:
-- SYS_ADMIN
-- SYS_PTRACE
 allowHostNetwork: true
 allowHostDirVolumePlugin: true
+allowPrivilegeEscalation: true
+allowedCapabilities: ["SYS_ADMIN","SYS_PTRACE"]
 runAsUser:
- type: RunAsAny
+  type: RunAsAny
 seLinuxContext:
- type: RunAsAny
-users:
-- system:serviceaccount:prequel:prequel-probes
-- system:serviceaccount:prequel:prequel-collector
+  type: RunAsAny
+seccompProfiles: ["runtime/default"]   # <-- add this (or "*")
+volumes: ["*"]
+users: []     # keep empty; binding is via RBAC
+groups: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prequel-scc-use
+rules:
+  - apiGroups: ["security.openshift.io"]
+    resources: ["securitycontextconstraints"]
+    resourceNames: ["prequel-scc"]
+    verbs: ["use"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prequel-scc-use
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prequel-scc-use
+subjects:
+- kind: ServiceAccount
+  name: prequel-probes
+  namespace: prequel
+- kind: ServiceAccount
+  name: prequel-collector
+  namespace: prequel
 {{- end }}
 
 {{- end }}
