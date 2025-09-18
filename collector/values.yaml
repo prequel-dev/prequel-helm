@@ -40,6 +40,23 @@ provision:
   tokenName: "prequeltoken"
   # The key of the token in the token secret.
   tokenKey: "apiKey"
+  # Annotations
+  installAnnotations:
+    # Run job after provision resources created.
+    # Allow the job manager to delete the job resource after ttl,
+    # which gives us an opportunity to see the job logs.
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+  uninstallAnnotations:
+    # Defer creation of job until hook is run.
+    # Uninstall job should run before resources are deleted to allow NATS comms.
+    "helm.sh/hook": pre-delete
+    # Unfortunatley, Helm does not support pre-delete hooks.
+    # That means that the NATS callback to the backend will fail, but at least secrets will be removed.
+    argocd.argoproj.io/hook: PostDelete
+    # Allow the job manager to delete the job resource after ttl,
+    # which gives us an opportunity to see the job logs.
 ########################################################
 # MachineID install job options
 #

@@ -74,12 +74,7 @@ metadata:
     app.kubernetes.io/version: {{ .Chart.AppVersion }}
     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
-    # Run job after provision resources created.
-    # Allow the job manager to delete the job resource after ttl,
-    # which gives us an opportunity to see the job logs.
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/sync-wave: "-5"
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    {{- toYaml .Values.provision.installAnnotations | nindent 8 }}
 spec:
   ttlSecondsAfterFinished: 120 
   template:
