@@ -102,14 +102,7 @@ metadata:
     app.kubernetes.io/version: {{ .Chart.AppVersion }}
     helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
-    # Defer creation of job until hook is run.
-    # Uninstall job should run before resources are deleted to allow NATS comms.
-    "helm.sh/hook": pre-delete
-    # Unfortunatley, Helm does not support pre-delete hooks.
-    # That means that the NATS callback to the backend will fail, but at least secrets will be removed.
-    argocd.argoproj.io/hook: PostDelete
-    # Allow the job manager to delete the job resource after ttl,
-    # which gives us an opportunity to see the job logs.
+    {{- toYaml .Values.provision.uninstallAnnotations | nindent 8 }}
 spec:
   ttlSecondsAfterFinished: 120
   template:
