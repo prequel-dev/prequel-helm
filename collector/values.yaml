@@ -23,6 +23,8 @@ scc: false
 storageClassName: ""
 # Enable the Docker Hub registry. If true, then the Prequel images will be pulled from Docker Hub.
 dockerHubEnabled: true
+# The imagePullSecret to use to pull the Prequel images. If not set, then the registrycred secret will be derived from the api.token and used here.
+imagePullSecrets: []
 ########################################################
 # Provision install job options
 #
