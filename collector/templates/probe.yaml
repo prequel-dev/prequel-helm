@@ -83,7 +83,7 @@ spec:
             path: /livez
             port: health
           initialDelaySeconds: 30
-          periodSeconds: 10
+          periodSeconds: 60
           timeoutSeconds: 1
           failureThreshold: 3
       hostPID: true
