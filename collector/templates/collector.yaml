@@ -126,6 +126,30 @@ spec:
             name: spool-volume
           - name: shared-data
             mountPath: /data
+          ports:
+          - name: health
+            containerPort: 8081
+          startupProbe:
+            httpGet:
+              path: /startupz
+              port: health
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: health
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 1
+            failureThreshold: 3
       {{- with .Values.collector.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
