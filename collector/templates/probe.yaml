@@ -20,25 +20,15 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      initContainers:
-        - name: "machineid"
-          command:
-          - '/app/prequel-machineid'
-          - '/data/machineid.txt'
-          image: "{{ .Values.repository }}/{{ .Values.machineid.image.repoName }}:{{ .Values.machineid.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
-          env:
-          - name: K8S_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          volumeMounts:
-          - name: shared-data
-            mountPath: /data
       containers:
       - args: ["/app/prequel-probes"]
         image: "{{ .Values.repository }}/{{ .Values.probes.image.repoName }}:{{ .Values.probes.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: {{ .Values.probes.image.pullPolicy }}
+        env:
+          - name: K8S_NODE_NAME # used to derive machine id
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
         name: {{ .Values.probes.fullnameOverride }}
         resources: {}
         securityContext:
@@ -60,8 +50,6 @@ spec:
           mountPath: /etc/prequel/logmeta
         - name: spool
           mountPath: /etc/prequel/spool
-        - name: shared-data
-          mountPath: /data
       hostPID: true
       {{- with .Values.probes.nodeSelector }}
       nodeSelector:
@@ -91,8 +79,6 @@ spec:
       - name: tls-ca
         secret:
           secretName: nats-ca
-      - name: shared-data
-        emptyDir: {}
       - name: logmeta
         emptyDir: {}
       - name: spool

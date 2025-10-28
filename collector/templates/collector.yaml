@@ -46,27 +46,34 @@ spec:
         - name: shared-data
           emptyDir: {}
       initContainers:
-        - name: "machineid"
-          command:
-          - '/app/prequel-machineid'
-          - '/data/machineid.txt'
-          image: "{{ .Values.repository }}/{{ .Values.machineid.image.repoName }}:{{ .Values.machineid.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.collector.image.pullPolicy }}
-          env:
-          - name: K8S_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
+        - name: "fixperms"
           # See https://github.com/kubernetes/examples/issues/260
-          - name: "FIX_OWNERSHIP_UID"
+          image: "busybox@sha256:2f590fc602ce325cbff2ccfc39499014d039546dc400ef8bbf5c6ffb860632e7"
+          imagePullPolicy: IfNotPresent
+          command:
+          - /bin/sh
+          - '-c'
+          - |
+            set -eu
+            IFS=','
+
+            echo "Fixing ownership to ${FIX_UID}:${FIX_GID}..."
+            for p in $FIX_PATHS; do
+              if [ -e "$p" ]; then
+                echo "→ chown -R ${FIX_UID}:${FIX_GID} $p"
+                chown -R "${FIX_UID}:${FIX_GID}" "$p"
+              else
+                echo "⚠️  Path not found: $p"
+              fi
+            done
+          env:
+          - name: "FIX_UID"
             value: "{{ .Values.collector.securityContext.runAsUser }}"
-          - name: "FIX_OWNERSHIP_GID"
+          - name: "FIX_GID"
             value: "{{ .Values.collector.securityContext.runAsGroup }}"
-          - name: "FIX_OWNERSHIP_PATHS"
+          - name: "FIX_PATHS"
             value: "/etc/prequel/spool,/etc/prequel/spool_legacy/k8s,/etc/prequel-policy"
           volumeMounts:
-          - name: shared-data
-            mountPath: /data
           - name: spool-volume
             mountPath: /etc/prequel/spool
           - name: k8s-spool-volume
@@ -74,12 +81,12 @@ spec:
           - name: cache-volume
             mountPath: /etc/prequel-policy
         - name: "cgroupid"
+          image: "busybox@sha256:2f590fc602ce325cbff2ccfc39499014d039546dc400ef8bbf5c6ffb860632e7"
+          imagePullPolicy: IfNotPresent
           command:
           - /bin/sh
           - '-c'
           - 'cat /proc/self/cgroup > /data/cgroupid.txt'
-          image: "busybox:latest"
-          imagePullPolicy: IfNotPresent
           securityContext:
             privileged: true
           volumeMounts:
@@ -111,6 +118,10 @@ spec:
                 key: "{{ .Values.provision.tokenKey }}"
           - name: K8S_SPOOL_SIZE
             value: {{ .Values.collector.k8s.eventSpoolSize }}
+          - name: K8S_NODE_NAME # used to derive machine id
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           volumeMounts:
           - mountPath: /etc/nats-certs/nats
             name: nats-tls
