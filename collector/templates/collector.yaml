@@ -300,8 +300,6 @@ rules:
   - endpoints
   - configmaps
   verbs:
-  - create
-  - update
   - list
   - watch
   - get
