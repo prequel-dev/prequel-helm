@@ -105,6 +105,13 @@ collector:
     runAsUser: 65532
     runAsGroup: 65532
     fsGroup: 65532
+    capabilities:
+      drop:
+        - ALL
+    privileged: false
+    allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
   # The resources to apply to the Prequel collector.
   resources:
     requests:
@@ -173,6 +180,8 @@ probes:
     capabilities:
       add:
         - SYS_ADMIN
+      drop:
+        - ALL
     privileged: true
     seccompProfile:
       type: RuntimeDefault
@@ -183,23 +192,7 @@ probes:
 ########################################################
 nats:
   reloader:
-    enabled: true
-    image:
-      fullImageName: prequeldev/prequel:0.14.6
-      pullPolicy: Always
-    merge:
-      args:
-        - "/usr/local/bin/nats-server-config-reloader"
-        - -pid
-        - /var/run/nats/nats.pid
-        - -config
-        - /etc/nats-config/nats.conf
-        - -config
-        - /etc/nats-ca-cert/ca.crt
-        - -config
-        - /etc/nats-certs/nats/tls.crt
-        - -config
-        - /etc/nats-certs/nats/tls.key
+    enabled: false
   # The Prequel NATS box.
   natsBox:
     enabled: false
@@ -238,6 +231,11 @@ nats:
       # different from k8s units, suffix must be B, KiB, MiB, GiB, or TiB
       # should be ~90% of memory limit
       GOMEMLIMIT: 920MiB
+    securityContext:
+      capabilities:
+        drop:
+          - ALL
+      privileged: false
     merge:
       args:
         - "/usr/local/bin/nats-server"
@@ -250,6 +248,11 @@ nats:
         limits:
           cpu: "2"
           memory: 1Gi
+      securityContext:
+        capabilities:
+          drop:
+            - ALL
+      privileged: false
     patch:
       - op: add
         path: /volumeMounts/-
