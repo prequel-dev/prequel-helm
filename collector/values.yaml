@@ -180,6 +180,8 @@ probes:
     capabilities:
       add:
         - SYS_ADMIN
+        - CAP_BPF
+        - CAP_PERFMON
       drop:
         - ALL
     privileged: true
@@ -231,11 +233,6 @@ nats:
       # different from k8s units, suffix must be B, KiB, MiB, GiB, or TiB
       # should be ~90% of memory limit
       GOMEMLIMIT: 920MiB
-    securityContext:
-      capabilities:
-        drop:
-          - ALL
-      privileged: false
     merge:
       args:
         - "/usr/local/bin/nats-server"
@@ -249,6 +246,7 @@ nats:
           cpu: "2"
           memory: 1Gi
       securityContext:
+        runAsUser: 65532
         capabilities:
           drop:
             - ALL
