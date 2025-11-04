@@ -40,6 +40,9 @@ spec:
         - name: k8s-spool-volume
           persistentVolumeClaim:
             claimName: k8s-spool-pv-claim
+        - name: tsdb-volume
+          persistentVolumeClaim:
+            claimName: tsdb-pv-claim
         - name: spool-volume
           persistentVolumeClaim:
             claimName: spool-pv-claim
@@ -137,6 +140,8 @@ spec:
             name: spool-volume
           - name: shared-data
             mountPath: /data
+          - mountPath: "/etc/prequel/tsdb/"
+            name: tsdb-volume
           ports:
           - name: health
             containerPort: 8081
@@ -205,6 +210,18 @@ spec:
   resources:
     requests:
       storage: {{ .Values.collector.k8s.eventSpoolSize }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: tsdb-pv-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.collector.tsdb.tsdbSize }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -84,6 +84,8 @@ collector:
   k8s:
     eventSpoolSize: 128Mi
   # The event spool size for Prequel events.
+  tsdb:
+    tsdbSize: 5Gi
   eventSpool:
     size: 128Mi
   # The Prequel collector image.
