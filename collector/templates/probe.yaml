@@ -34,17 +34,23 @@ spec:
         securityContext:
           {{- toYaml .Values.probes.securityContext | nindent 10 }}
         volumeMounts:
-        - name: host-root
-          mountPath: /host
+        - name: host-run
+          mountPath: /host/run
+          readOnly: true
+        - name: host-var
+          mountPath: /host/var
+          readOnly: true
+        - name: host-etc
+          mountPath: /host/etc
+          readOnly: true
+        - name: tracefs
+          mountPath: /sys/kernel/tracing
           readOnly: true
         - mountPath: /etc/nats-certs/nats
           name: nats-tls
           readOnly: true
         - mountPath: /etc/nats-ca-cert
           name: tls-ca
-          readOnly: true
-        - name: sys
-          mountPath: /sys
           readOnly: true
         - name: logmeta
           mountPath: /etc/prequel/logmeta
@@ -89,14 +95,22 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "probes.serviceAccountName" . }}
       volumes:
-      - name: host-root
+      - name: host-run
         hostPath:
-            path: /
-            type: Directory
-      - name: sys
+          path: /run
+          type: Directory
+      - name: host-etc
         hostPath:
-            path: /sys
-            type: Directory
+          path: /etc
+          type: Directory
+      - name: host-var
+        hostPath:
+          path: /var
+          type: Directory
+      - name: tracefs
+        hostPath:
+          path: /sys/kernel/tracing
+          type: Directory
       - name: nats-tls
         secret:
           secretName: nats-tls
