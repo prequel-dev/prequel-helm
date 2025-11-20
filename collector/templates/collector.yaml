@@ -27,6 +27,7 @@ spec:
       serviceAccountName: {{ include "collector.serviceAccountName" . }}
       securityContext:
         fsGroup: {{ .Values.collector.securityContext.fsGroup }}
+      terminationGracePeriodSeconds: 60 # Provide extra time for TSDB graceful shutdown
       volumes:
         - name: nats-tls
           secret:
@@ -288,6 +289,8 @@ metadata:
   name: {{ include "collector.fullname" . }}
   namespace: {{ .Release.Namespace }}
 rules:
+- nonResourceURLs: ["/metrics"] # for kube-state-metrics scraping
+  verbs: ["get"]
 - apiGroups:
   - apps 
   resources:
@@ -318,6 +321,10 @@ rules:
   - secrets
   - endpoints
   - configmaps
+  # for kube-state-metrics scraping
+  - nodes/metrics
+  - nodes/proxy
+  - services/proxy
   verbs:
   - list
   - watch
