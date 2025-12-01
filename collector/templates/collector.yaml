@@ -128,6 +128,8 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: TSDB_MAX_SIZE
+            value: {{ .Values.collector.tsdb.tsdbSize }}
           volumeMounts:
           - mountPath: /etc/nats-certs/nats
             name: nats-tls
