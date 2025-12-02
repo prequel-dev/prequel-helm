@@ -86,6 +86,7 @@ collector:
   # The event spool size for Prequel events.
   tsdb:
     tsdbSize: 5Gi
+    enabled: true # enabled tsdb volume
   eventSpool:
     size: 128Mi
   # The Prequel collector image.
