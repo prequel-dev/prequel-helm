@@ -253,7 +253,7 @@ nats:
         capabilities:
           drop:
             - ALL
-      privileged: false
+        privileged: false
     patch:
       - op: add
         path: /volumeMounts/-
