@@ -43,11 +43,8 @@ spec:
         - name: host-etc
           mountPath: /host/etc
           readOnly: true
-        - name: tracefs
-          mountPath: /sys/kernel/tracing
-          readOnly: true
-        - name: debugfs
-          mountPath: /sys/kernel/debug
+        - name: sys-kernel
+          mountPath: /sys/kernel
           readOnly: true
         - mountPath: /etc/nats-certs/nats
           name: nats-tls
@@ -110,13 +107,9 @@ spec:
         hostPath:
           path: /var
           type: Directory
-      - name: tracefs
+      - name: sys-kernel
         hostPath:
-          path: /sys/kernel/tracing
-          type: Directory
-      - name: debugfs
-        hostPath:
-          path: /sys/kernel/debug
+          path: /sys/kernel
           type: Directory
       - name: nats-tls
         secret:
