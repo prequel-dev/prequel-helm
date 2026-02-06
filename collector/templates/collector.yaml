@@ -45,6 +45,9 @@ spec:
         - name: tsdb-volume
           persistentVolumeClaim:
             claimName: tsdb-pv-claim
+        - name: tsdb-wal-volume
+          persistentVolumeClaim:
+            claimName: tsdb-wal-pv-claim
 {{- end }}
         - name: spool-volume
           persistentVolumeClaim:
@@ -72,13 +75,22 @@ spec:
                 echo "⚠️  Path not found: $p"
               fi
             done
+
+            # Initial implementation of TSDB did not mount wal separately, so clean it up here.
+            DIR="/etc/prequel/tsdb/wal"
+            if [ -d "$DIR" ]; then
+                rm -rf "$DIR"
+                echo "Removed directory: $DIR"
+            else
+                echo "Directory does not exist: $DIR"
+            fi
           env:
           - name: "FIX_UID"
             value: "{{ .Values.collector.securityContext.runAsUser }}"
           - name: "FIX_GID"
             value: "{{ .Values.collector.securityContext.runAsGroup }}"
           - name: "FIX_PATHS"
-            value: "/etc/prequel/spool,/etc/prequel/spool_legacy/k8s,/etc/prequel-policy,/etc/prequel/tsdb"
+            value: "/etc/prequel/spool,/etc/prequel/spool_legacy/k8s,/etc/prequel-policy,/etc/prequel/tsdb,/etc/prequel/tsdb_wal"
           volumeMounts:
           - name: spool-volume
             mountPath: /etc/prequel/spool
@@ -89,6 +101,8 @@ spec:
 {{- if .Values.collector.tsdb.enabled }}
           - name: tsdb-volume
             mountPath: "/etc/prequel/tsdb/"
+          - name: tsdb-wal-volume
+            mountPath: "/etc/prequel/tsdb_wal" # Don't use subPath here to allow WAL cleanup on block PVC.  Main container uses subPath.
 {{- end }}
         - name: "cgroupid"
           image: "busybox@sha256:2f590fc602ce325cbff2ccfc39499014d039546dc400ef8bbf5c6ffb860632e7"
@@ -154,6 +168,9 @@ spec:
 {{- if .Values.collector.tsdb.enabled }}
           - mountPath: "/etc/prequel/tsdb/"
             name: tsdb-volume
+          - mountPath: "/etc/prequel/tsdb/wal"
+            name: tsdb-wal-volume
+            subPath: wal
 {{- end }}
           ports:
           - name: health
@@ -239,6 +256,21 @@ spec:
   resources:
     requests:
       storage: {{ .Values.collector.tsdb.tsdbSize }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: tsdb-wal-pv-claim
+spec:
+  accessModes:
+  - ReadWriteOnce
+  {{- if .Values.storageClassName }}
+  storageClassName: {{ .Values.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.collector.tsdb.walSize }}
 {{- end }}
 ---
 apiVersion: v1
