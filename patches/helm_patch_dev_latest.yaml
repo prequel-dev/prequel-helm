@@ -1,0 +1,36 @@
+token: ""
+url: "api-dev.prequel.dev"
+repository: "513710883148.dkr.ecr.us-east-2.amazonaws.com"
+appUrl: "app-dev.prequel.dev"
+imagePullSecrets: [{name: devcreds}]
+
+nats:
+  config:
+    merge:
+      leafnodes:
+        remotes:
+        - url: "tls://gateway-dev.prequel.dev:7422"
+          credentials: "/etc/nats-user/user.creds"
+          tls:
+            handshake_first: true
+
+provision:
+  image:
+    repoName: "prequel-provision"
+    tag: "latest"
+    pullPolicy: Always
+collector:
+  image:
+    repoName: "prequel-collector"
+    tag: "latest"
+    pullPolicy: Always
+machineid:
+  image:
+    repoName: "prequel-machineid"
+    tag: "latest"
+    pullPolicy: Always
+probes:
+  image:
+    repoName: "prequel-probes"
+    tag: "latest"
+    pullPolicy: Always
