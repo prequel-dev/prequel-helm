@@ -122,7 +122,7 @@ jobs:
 
       - name: Deploy release to dev
         run: |
-          helm -n prequel upgrade prequel-latest-dev ./collector -f ./patches/helm_patch_dev_latest.yaml
+          helm -n prequel upgrade prequel-latest-dev ./collector -f ./patches/helm_patch_dev_latest.yaml --set token=${{ secrets.DEV_PROVISION_TOKEN }} --set clusterName="prequel-dev"
 
       - name: Configure prod credentials
         uses: aws-actions/configure-aws-credentials@v4.0.2
