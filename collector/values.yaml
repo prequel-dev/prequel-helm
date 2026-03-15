@@ -102,6 +102,8 @@ collector:
     create: true
     annotations: {}
     name: "prequel-collector"
+  # Extra environment variables to inject into the collector container.
+  extraEnv: []
   # The tolerations to apply to the Prequel collector.
   tolerations: []
   # The security context to apply to the Prequel collector.
