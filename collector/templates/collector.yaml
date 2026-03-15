@@ -150,6 +150,9 @@ spec:
             value: {{ .Values.collector.tsdb.enabled | quote }}
           - name: TSDB_MAX_SIZE
             value: {{ .Values.collector.tsdb.tsdbSize }}
+          {{- with .Values.collector.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
           volumeMounts:
           - mountPath: /etc/nats-certs/nats
             name: nats-tls
