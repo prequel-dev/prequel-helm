@@ -54,6 +54,9 @@ spec:
             claimName: spool-pv-claim
         - name: shared-data
           emptyDir: {}
+        - name: cloudtrail-cache
+          emptyDir:
+            sizeLimit: 200Mi
       initContainers:
         - name: "fixperms"
           # See https://github.com/kubernetes/examples/issues/260
@@ -168,6 +171,8 @@ spec:
             name: spool-volume
           - name: shared-data
             mountPath: /data
+          - name: cloudtrail-cache
+            mountPath: /etc/prequel/cloudtrail
 {{- if .Values.collector.tsdb.enabled }}
           - mountPath: "/etc/prequel/tsdb/"
             name: tsdb-volume
